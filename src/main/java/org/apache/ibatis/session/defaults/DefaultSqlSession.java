@@ -51,8 +51,11 @@ public class DefaultSqlSession implements SqlSession {
   private final Configuration configuration;
   private final Executor executor;
 
+  /** 是否自动提交事务 */
   private final boolean autoCommit;
+  /** 是否脏读(即是否有操作过行数据) */
   private boolean dirty;
+  /** 游标数组 */
   private List<Cursor<?>> cursorList;
 
   public DefaultSqlSession(Configuration configuration, Executor executor, boolean autoCommit) {
@@ -74,7 +77,7 @@ public class DefaultSqlSession implements SqlSession {
   @Override
   public <T> T selectOne(String statement, Object parameter) {
     // Popular vote was to return null on 0 results and throw exception on too many.
-    List<T> list = this.<T>selectList(statement, parameter);
+    List<T> list = this.<T>selectList(statement, parameter);//套用selectList
     if (list.size() == 1) {
       return list.get(0);
     } else if (list.size() > 1) {
@@ -193,7 +196,7 @@ public class DefaultSqlSession implements SqlSession {
   @Override
   public int update(String statement, Object parameter) {
     try {
-      dirty = true;
+      dirty = true;//标记操作过行数据
       MappedStatement ms = configuration.getMappedStatement(statement);
       return executor.update(ms, wrapCollection(parameter));
     } catch (Exception e) {
@@ -239,7 +242,7 @@ public class DefaultSqlSession implements SqlSession {
   public void rollback(boolean force) {
     try {
       executor.rollback(isCommitOrRollbackRequired(force));
-      dirty = false;
+      dirty = false;//回滚并标记为未操作行数据
     } catch (Exception e) {
       throw ExceptionFactory.wrapException("Error rolling back transaction.  Cause: " + e, e);
     } finally {
@@ -250,7 +253,7 @@ public class DefaultSqlSession implements SqlSession {
   @Override
   public List<BatchResult> flushStatements() {
     try {
-      return executor.flushStatements();
+      return executor.flushStatements();//批处理提交
     } catch (Exception e) {
       throw ExceptionFactory.wrapException("Error flushing statements.  Cause: " + e, e);
     } finally {
@@ -313,10 +316,20 @@ public class DefaultSqlSession implements SqlSession {
     cursorList.add(cursor);
   }
 
+  /**
+   * 判断是否执行提交或回滚
+   * @param force 是否强制提交
+   * @return
+   */
   private boolean isCommitOrRollbackRequired(boolean force) {
     return (!autoCommit && dirty) || force;
   }
 
+  /**
+   * 包装集合
+   * @param object
+   * @return
+   */
   private Object wrapCollection(final Object object) {
     if (object instanceof Collection) {
       StrictMap<Object> map = new StrictMap<Object>();

@@ -50,26 +50,32 @@ public class MapperMethod {
     this.method = new MethodSignature(config, mapperInterface, method);
   }
 
+  /***
+   * 方法执行并返回结果
+   * @param sqlSession
+   * @param args
+   * @return
+   */
   public Object execute(SqlSession sqlSession, Object[] args) {
     Object result;
     switch (command.getType()) {
-      case INSERT: {
+      case INSERT: {//插入
       Object param = method.convertArgsToSqlCommandParam(args);
         result = rowCountResult(sqlSession.insert(command.getName(), param));
         break;
       }
-      case UPDATE: {
+      case UPDATE: {//更新
         Object param = method.convertArgsToSqlCommandParam(args);
         result = rowCountResult(sqlSession.update(command.getName(), param));
         break;
       }
-      case DELETE: {
+      case DELETE: {//删除
         Object param = method.convertArgsToSqlCommandParam(args);
         result = rowCountResult(sqlSession.delete(command.getName(), param));
         break;
       }
-      case SELECT:
-        if (method.returnsVoid() && method.hasResultHandler()) {
+      case SELECT://查询
+        if (method.returnsVoid() && method.hasResultHandler()) {//空返回并且有响应处理
           executeWithResultHandler(sqlSession, args);
           result = null;
         } else if (method.returnsMany()) {
@@ -96,6 +102,11 @@ public class MapperMethod {
     return result;
   }
 
+  /**
+   * 返回行的变更数,根据不同的returnType转换成不同类型
+   * @param rowCount
+   * @return
+   */
   private Object rowCountResult(int rowCount) {
     final Object result;
     if (method.returnsVoid()) {
@@ -112,10 +123,13 @@ public class MapperMethod {
     return result;
   }
 
+  /**
+   * 执行查询多行结果返并使用{@link ResultHandler}来处理
+   */
   private void executeWithResultHandler(SqlSession sqlSession, Object[] args) {
     MappedStatement ms = sqlSession.getConfiguration().getMappedStatement(command.getName());
     if (!StatementType.CALLABLE.equals(ms.getStatementType())
-        && void.class.equals(ms.getResultMaps().get(0).getType())) {
+        && void.class.equals(ms.getResultMaps().get(0).getType())) {//非存储过程的情况下不允许定义void返回(空返回)
       throw new BindingException("method " + command.getName()
           + " needs either a @ResultMap annotation, a @ResultType annotation,"
           + " or a resultType attribute in XML so a ResultHandler can be used as a parameter.");
@@ -129,6 +143,9 @@ public class MapperMethod {
     }
   }
 
+  /***
+   * 执行查询多行结果返回数组 或 集合
+   */
   private <E> Object executeForMany(SqlSession sqlSession, Object[] args) {
     List<E> result;
     Object param = method.convertArgsToSqlCommandParam(args);
@@ -139,7 +156,7 @@ public class MapperMethod {
       result = sqlSession.<E>selectList(command.getName(), param);
     }
     // issue #510 Collections & arrays support
-    if (!method.getReturnType().isAssignableFrom(result.getClass())) {
+    if (!method.getReturnType().isAssignableFrom(result.getClass())) {//根据类型返回数组 或 集合
       if (method.getReturnType().isArray()) {
         return convertToArray(result);
       } else {
@@ -149,6 +166,9 @@ public class MapperMethod {
     return result;
   }
 
+  /**
+   * 执行查询多行结果返回游标
+   */
   private <T> Cursor<T> executeForCursor(SqlSession sqlSession, Object[] args) {
     Cursor<T> result;
     Object param = method.convertArgsToSqlCommandParam(args);
@@ -161,6 +181,9 @@ public class MapperMethod {
     return result;
   }
 
+  /**
+   * 将结果集转为集合
+   */
   private <E> Object convertToDeclaredCollection(Configuration config, List<E> list) {
     Object collection = config.getObjectFactory().create(method.getReturnType());
     MetaObject metaObject = config.newMetaObject(collection);
@@ -168,6 +191,9 @@ public class MapperMethod {
     return collection;
   }
 
+  /**
+   * 将结果集转为数组
+   */
   @SuppressWarnings("unchecked")
   private <E> Object convertToArray(List<E> list) {
     Class<?> arrayComponentType = method.getReturnType().getComponentType();
@@ -182,6 +208,9 @@ public class MapperMethod {
     }
   }
 
+  /**
+   * 执行查询多行结果返回Map
+   */
   private <K, V> Map<K, V> executeForMap(SqlSession sqlSession, Object[] args) {
     Map<K, V> result;
     Object param = method.convertArgsToSqlCommandParam(args);
@@ -295,6 +324,11 @@ public class MapperMethod {
       this.paramNameResolver = new ParamNameResolver(configuration, method);
     }
 
+    /**
+     * 参数转换成sql命令参数
+     * @param args
+     * @return
+     */
     public Object convertArgsToSqlCommandParam(Object[] args) {
       return paramNameResolver.getNamedParams(args);
     }

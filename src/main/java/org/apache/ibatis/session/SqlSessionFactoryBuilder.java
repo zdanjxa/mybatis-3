@@ -27,7 +27,9 @@ import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
 
 /**
  * Builds {@link SqlSession} instances.
- *
+ * {@link SqlSessionFactory} 构造器 实质是初始化 {@link SqlSession}
+ * SqlSessionFactoryBuilder => SqlSessionFactory => SqlSession
+ * 提供了各种 build 的重载方法，核心都是解析出 Configuration 配置对象，从而创建出 DefaultSqlSessionFactory 对象
  * @author Clinton Begin
  */
 public class SqlSessionFactoryBuilder {
@@ -44,9 +46,18 @@ public class SqlSessionFactoryBuilder {
     return build(reader, null, properties);
   }
 
+  /**
+   * 构造 SqlSessionFactory 对象
+   * @param reader 对象
+   * @param environment 环境
+   * @param properties 属性
+   * @return
+   */
   public SqlSessionFactory build(Reader reader, String environment, Properties properties) {
     try {
+      // 创建 XMLConfigBuilder
       XMLConfigBuilder parser = new XMLConfigBuilder(reader, environment, properties);
+      // 执行XML解析， 创建 DefaultSqlSessionFactory
       return build(parser.parse());
     } catch (Exception e) {
       throw ExceptionFactory.wrapException("Error building SqlSession.", e);
@@ -72,9 +83,18 @@ public class SqlSessionFactoryBuilder {
     return build(inputStream, null, properties);
   }
 
+  /**
+   * 读取mybatis-config.xml构建 {@link DefaultSqlSessionFactory}
+   * @param inputStream 文件流
+   * @param environment 环境
+   * @param properties 属性
+   * @return
+   */
   public SqlSessionFactory build(InputStream inputStream, String environment, Properties properties) {
     try {
+      //创建XMLConfigBuilder
       XMLConfigBuilder parser = new XMLConfigBuilder(inputStream, environment, properties);
+      // 执行XML解析， 创建 DefaultSqlSessionFactory
       return build(parser.parse());
     } catch (Exception e) {
       throw ExceptionFactory.wrapException("Error building SqlSession.", e);
@@ -87,7 +107,12 @@ public class SqlSessionFactoryBuilder {
       }
     }
   }
-    
+
+  /**
+   * 通过配置初始化 {@link DefaultSqlSessionFactory}
+   * @param config
+   * @return
+   */
   public SqlSessionFactory build(Configuration config) {
     return new DefaultSqlSessionFactory(config);
   }

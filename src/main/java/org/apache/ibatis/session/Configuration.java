@@ -710,10 +710,21 @@ public class Configuration {
     return incompleteMethods;
   }
 
+  /**
+   * 获取MappedStatement
+   * @param id `${namespace}.${id}`
+   * @return
+   */
   public MappedStatement getMappedStatement(String id) {
     return this.getMappedStatement(id, true);
   }
 
+  /**
+   * 获取MappedStatement
+   * @param id `${namespace}.${id}`
+   * @param validateIncompleteStatements 校验，保证所有 MappedStatement 已经构造完毕
+   * @return
+   */
   public MappedStatement getMappedStatement(String id, boolean validateIncompleteStatements) {
     if (validateIncompleteStatements) {
       buildAllStatements();
@@ -768,6 +779,7 @@ public class Configuration {
    * Parses all the unprocessed statement nodes in the cache. It is recommended
    * to call this method once all the mappers are added as it provides fail-fast
    * statement validation.
+   * 同步构建各种MappedStatement
    */
   protected void buildAllStatements() {
     if (!incompleteResultMaps.isEmpty()) {

@@ -33,6 +33,7 @@ import org.apache.ibatis.transaction.managed.ManagedTransactionFactory;
 
 /**
  * @author Clinton Begin
+ * 从数据源或连接中获取{@ SqlSession}
  */
 public class DefaultSqlSessionFactory implements SqlSessionFactory {
 
@@ -87,6 +88,13 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     return configuration;
   }
 
+    /**
+     * 从数据源创建{@link DefaultSqlSession}
+     * @param execType
+     * @param level
+     * @param autoCommit
+     * @return
+     */
   private SqlSession openSessionFromDataSource(ExecutorType execType, TransactionIsolationLevel level, boolean autoCommit) {
     Transaction tx = null;
     try {
@@ -96,6 +104,7 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
       final Executor executor = configuration.newExecutor(tx, execType);
       return new DefaultSqlSession(configuration, executor, autoCommit);
     } catch (Exception e) {
+        //异常则关闭数据
       closeTransaction(tx); // may have fetched a connection so lets call close()
       throw ExceptionFactory.wrapException("Error opening session.  Cause: " + e, e);
     } finally {
@@ -103,6 +112,12 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     }
   }
 
+    /**
+     * 从数据库连接创建 {@link DefaultSqlSession}
+     * @param execType
+     * @param connection
+     * @return
+     */
   private SqlSession openSessionFromConnection(ExecutorType execType, Connection connection) {
     try {
       boolean autoCommit;
@@ -125,13 +140,22 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     }
   }
 
+    /**
+     * 从环境获取事务工厂
+     * @param environment
+     * @return
+     */
   private TransactionFactory getTransactionFactoryFromEnvironment(Environment environment) {
-    if (environment == null || environment.getTransactionFactory() == null) {
+    if (environment == null || environment.getTransactionFactory() == null) {//使用ManagedTransactionFactory
       return new ManagedTransactionFactory();
     }
     return environment.getTransactionFactory();
   }
 
+    /**
+     * 关闭事务
+     * @param tx
+     */
   private void closeTransaction(Transaction tx) {
     if (tx != null) {
       try {

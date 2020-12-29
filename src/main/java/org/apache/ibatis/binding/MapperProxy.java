@@ -47,8 +47,8 @@ public class MapperProxy<T> implements InvocationHandler, Serializable {
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
     try {
-      if (Object.class.equals(method.getDeclaringClass())) {
-        return method.invoke(this, args);
+      if (Object.class.equals(method.getDeclaringClass())) {//当前class对象的声明对象class如果是object
+        return method.invoke(this, args);  //ps: 一般针对内部类的情况，比如A类有内部类B，那么通过B.class.getDeclaringClass()方法将获取到A的Class对象.
       } else if (isDefaultMethod(method)) {
         return invokeDefaultMethod(proxy, method, args);
       }
@@ -86,6 +86,7 @@ public class MapperProxy<T> implements InvocationHandler, Serializable {
 
   /**
    * Backport of java.lang.reflect.Method#isDefault()
+   * 是否为默认方法,即 java8+的接口默认方法  default void insert(){}
    */
   private boolean isDefaultMethod(Method method) {
     return (method.getModifiers()

@@ -30,6 +30,8 @@ import org.apache.ibatis.executor.BatchResult;
 import org.apache.ibatis.reflection.ExceptionUtil;
 
 /**
+ * SqlSessionFactory, SqlSession的子类,实际中不会使用此类
+ * 基本上都是直接使用SqlSessionFactory、SqlSession的方法调用
  * @author Larry Meadors
  */
 public class SqlSessionManager implements SqlSessionFactory, SqlSession {
@@ -37,6 +39,7 @@ public class SqlSessionManager implements SqlSessionFactory, SqlSession {
   private final SqlSessionFactory sqlSessionFactory;
   private final SqlSession sqlSessionProxy;
 
+  /** 当前线程绑定变量 */
   private final ThreadLocal<SqlSession> localSqlSession = new ThreadLocal<SqlSession>();
 
   private SqlSessionManager(SqlSessionFactory sqlSessionFactory) {
@@ -44,7 +47,7 @@ public class SqlSessionManager implements SqlSessionFactory, SqlSession {
     this.sqlSessionProxy = (SqlSession) Proxy.newProxyInstance(
         SqlSessionFactory.class.getClassLoader(),
         new Class[]{SqlSession.class},
-        new SqlSessionInterceptor());
+        new SqlSessionInterceptor());//创建代理类拦截SqlSession
   }
 
   public static SqlSessionManager newInstance(Reader reader) {
@@ -345,13 +348,13 @@ public class SqlSessionManager implements SqlSessionFactory, SqlSession {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
       final SqlSession sqlSession = SqlSessionManager.this.localSqlSession.get();
-      if (sqlSession != null) {
+      if (sqlSession != null) {//本地线程池存在SqlSession
         try {
           return method.invoke(sqlSession, args);
         } catch (Throwable t) {
           throw ExceptionUtil.unwrapThrowable(t);
         }
-      } else {
+      } else {//手动创建SqlSession
         final SqlSession autoSqlSession = openSession();
         try {
           final Object result = method.invoke(autoSqlSession, args);

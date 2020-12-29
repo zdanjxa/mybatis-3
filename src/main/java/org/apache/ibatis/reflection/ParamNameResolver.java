@@ -110,6 +110,7 @@ public class ParamNameResolver {
    * In addition to the default names, this method also adds the generic names (param1, param2,
    * ...).
    * </p>
+   * 将Mapper接口方法中的参数转为 {@link ParamMap}
    */
   public Object getNamedParams(Object[] args) {
     final int paramCount = names.size();
