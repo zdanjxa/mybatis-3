@@ -90,9 +90,9 @@ public class CacheBuilder {
   }
 
   public Cache build() {
-    setDefaultImplementations();
-    Cache cache = newBaseCacheInstance(implementation, id);
-    setCacheProperties(cache);
+    setDefaultImplementations();//默认实现
+    Cache cache = newBaseCacheInstance(implementation, id);//实例化
+    setCacheProperties(cache);//设置属性
     // issue #352, do not apply decorators to custom caches
     if (PerpetualCache.class.equals(cache.getClass())) {
       for (Class<? extends Cache> decorator : decorators) {
