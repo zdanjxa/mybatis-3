@@ -39,6 +39,9 @@ import org.apache.ibatis.session.Configuration;
 public class XMLStatementBuilder extends BaseBuilder {
 
   private final MapperBuilderAssistant builderAssistant;
+  /**
+   * 当前 XML 节点，例如：<select />、<insert />、<update />、<delete /> 标签
+   */
   private final XNode context;
   private final String requiredDatabaseId;
 
@@ -73,13 +76,14 @@ public class XMLStatementBuilder extends BaseBuilder {
     String resultMap = context.getStringAttribute("resultMap");
     String resultType = context.getStringAttribute("resultType");
     String lang = context.getStringAttribute("lang");
-    LanguageDriver langDriver = getLanguageDriver(lang);
+    LanguageDriver langDriver = getLanguageDriver(lang);//获得 lang 对应的 LanguageDriver 对象
 
     Class<?> resultTypeClass = resolveClass(resultType);
     String resultSetType = context.getStringAttribute("resultSetType");
     StatementType statementType = StatementType.valueOf(context.getStringAttribute("statementType", StatementType.PREPARED.toString()));
     ResultSetType resultSetTypeEnum = resolveResultSetType(resultSetType);
 
+    //判断是什么类型的sql语句 eg: select\insert\delete\update
     String nodeName = context.getNode().getNodeName();
     SqlCommandType sqlCommandType = SqlCommandType.valueOf(nodeName.toUpperCase(Locale.ENGLISH));
     boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
@@ -88,13 +92,16 @@ public class XMLStatementBuilder extends BaseBuilder {
     boolean resultOrdered = context.getBooleanAttribute("resultOrdered", false);
 
     // Include Fragments before parsing
+    //创建 XMLIncludeTransformer 对象，并替换所有 <include /> 标签相关的内容为<sql>
     XMLIncludeTransformer includeParser = new XMLIncludeTransformer(configuration, builderAssistant);
     includeParser.applyIncludes(context.getNode());
 
     // Parse selectKey after includes and remove them.
+    //解析 <selectKey /> 标签
     processSelectKeyNodes(id, parameterTypeClass, langDriver);
     
     // Parse the SQL (pre: <selectKey> and <include> were parsed and removed)
+    //创建sqlSource
     SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
     String resultSets = context.getStringAttribute("resultSets");
     String keyProperty = context.getStringAttribute("keyProperty");
@@ -102,20 +109,33 @@ public class XMLStatementBuilder extends BaseBuilder {
     KeyGenerator keyGenerator;
     String keyStatementId = id + SelectKeyGenerator.SELECT_KEY_SUFFIX;
     keyStatementId = builderAssistant.applyCurrentNamespace(keyStatementId, true);
+    //从 configuration 中获得 KeyGenerator 对象(#processSelectKeyNodes中添加)
     if (configuration.hasKeyGenerator(keyStatementId)) {
       keyGenerator = configuration.getKeyGenerator(keyStatementId);
-    } else {
+    } else {//判断是否使用对应的 Jdbc3KeyGenerator 或者 NoKeyGenerator 对象
       keyGenerator = context.getBooleanAttribute("useGeneratedKeys",
           configuration.isUseGeneratedKeys() && SqlCommandType.INSERT.equals(sqlCommandType))
           ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
     }
-
+    //创建 MappedStatement 对象
     builderAssistant.addMappedStatement(id, sqlSource, statementType, sqlCommandType,
         fetchSize, timeout, parameterMap, parameterTypeClass, resultMap, resultTypeClass,
         resultSetTypeEnum, flushCache, useCache, resultOrdered, 
         keyGenerator, keyProperty, keyColumn, databaseId, langDriver, resultSets);
   }
 
+  /**
+   * 解析<selectKey/> 并移除此节点
+   * 表示将selectKey的返回值赋予id属性
+   * BEFORE: 先设置到对象再执行数据库操作
+   * AFTER: 先执行数据库操作再设置到对象
+   * <selectKey keyProperty="id" resultType="int" order="BEFORE">
+   *     select CAST(RANDOM()*1000000 as INTEGER) a from SYSIBM.SYSDUMMY1
+   *   </selectKey>
+   * @param id
+   * @param parameterTypeClass
+   * @param langDriver
+   */
   private void processSelectKeyNodes(String id, Class<?> parameterTypeClass, LanguageDriver langDriver) {
     List<XNode> selectKeyNodes = context.evalNodes("selectKey");
     if (configuration.getDatabaseId() != null) {
@@ -125,6 +145,14 @@ public class XMLStatementBuilder extends BaseBuilder {
     removeSelectKeyNodes(selectKeyNodes);
   }
 
+  /**
+   * 解析<selectKey/>
+   * @param parentId
+   * @param list
+   * @param parameterTypeClass
+   * @param langDriver
+   * @param skRequiredDatabaseId
+   */
   private void parseSelectKeyNodes(String parentId, List<XNode> list, Class<?> parameterTypeClass, LanguageDriver langDriver, String skRequiredDatabaseId) {
     for (XNode nodeToHandle : list) {
       String id = parentId + SelectKeyGenerator.SELECT_KEY_SUFFIX;
@@ -135,6 +163,14 @@ public class XMLStatementBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 解析<selectKey/> 并构建SelectKeyGenerator存放入configuration的主键生成器中
+   * @param id
+   * @param nodeToHandle selectKey节点
+   * @param parameterTypeClass
+   * @param langDriver
+   * @param databaseId
+   */
   private void parseSelectKeyNode(String id, XNode nodeToHandle, Class<?> parameterTypeClass, LanguageDriver langDriver, String databaseId) {
     String resultType = nodeToHandle.getStringAttribute("resultType");
     Class<?> resultTypeClass = resolveClass(resultType);
@@ -174,6 +210,14 @@ public class XMLStatementBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 判断databaseId是否匹配
+   * 其实就是要查找databaseId配置为空或者匹配的情况的情况
+   * @param id
+   * @param databaseId
+   * @param requiredDatabaseId
+   * @return
+   */
   private boolean databaseIdMatchesCurrent(String id, String databaseId, String requiredDatabaseId) {
     if (requiredDatabaseId != null) {
       if (!requiredDatabaseId.equals(databaseId)) {

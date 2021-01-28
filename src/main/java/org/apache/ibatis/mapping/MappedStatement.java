@@ -29,6 +29,7 @@ import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.Configuration;
 
 /**
+ * 映射的语句,每个 select\delete\insert\update对应一个对象
  * @author Clinton Begin
  */
 public final class MappedStatement {
